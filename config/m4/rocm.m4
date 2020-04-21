@@ -90,7 +90,8 @@ AS_IF([test "x$with_rocm" != "xno"],
           [AC_CHECK_LIB([hsa-runtime64], [hsa_init], [rocm_happy=yes], [rocm_happy=no])])
 
     AS_IF([test "x$rocm_happy" = "xyes"],
-          [AC_SUBST([ROCM_CPPFLAGS])
+          [AC_DEFINE([HAVE_ROCM], 1, [Enable ROCm Support])
+           AC_SUBST([ROCM_CPPFLAGS])
            AC_SUBST([ROCM_LDFLAGS])
            AC_SUBST([ROCM_LIBS])],
           [AC_MSG_WARN([ROCm not found])])
@@ -117,7 +118,8 @@ AS_IF([test "x$with_rocm" != "xno"],
     LIBS="$SAVE_LIBS"
 
     AS_IF([test "x$hip_happy" = "xyes"],
-          [AC_SUBST([HIP_CPPFLAGS])
+          [AC_DEFINE([HAVE_HIP], 1, [Enable HIP Support])
+           AC_SUBST([HIP_CPPFLAGS])
            AC_SUBST([HIP_CXXFLAGS])
            AC_SUBST([HIP_LDFLAGS])
            AC_SUBST([HIP_LIBS])],
