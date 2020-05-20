@@ -53,7 +53,7 @@ static void uct_rocm_ipc_cache_purge(uct_rocm_ipc_cache_t *cache)
 
     ucs_list_for_each_safe(region, tmp, &region_list, list) {
         if (hsa_amd_ipc_memory_detach(region->mapped_addr) != HSA_STATUS_SUCCESS) {
-            ucs_fatal("failed to unmap addr:%p", region->mapped_addr);
+            ucs_trace("failed to unmap addr:%p", region->mapped_addr);
         }
 
         ucs_free(region);
@@ -82,7 +82,7 @@ static void uct_rocm_ipc_cache_invalidate_regions(uct_rocm_ipc_cache_t *cache,
         }
 
         if (hsa_amd_ipc_memory_detach(region->mapped_addr) != HSA_STATUS_SUCCESS) {
-            ucs_fatal("failed to unmap addr:%p", region->mapped_addr);
+            ucs_trace("failed to unmap addr:%p", region->mapped_addr);
         }
         ucs_free(region);
     }
@@ -128,7 +128,7 @@ ucs_status_t uct_rocm_ipc_cache_map_memhandle(void *arg, uct_rocm_ipc_key_t *key
             }
 
             if (hsa_amd_ipc_memory_detach(region->mapped_addr) != HSA_STATUS_SUCCESS) {
-                ucs_fatal("failed to unmap addr:%p", region->mapped_addr);
+                ucs_trace("failed to unmap addr:%p", region->mapped_addr);
             }
 
             ucs_free(region);

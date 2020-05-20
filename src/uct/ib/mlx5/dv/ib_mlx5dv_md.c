@@ -9,6 +9,7 @@
 
 #include <ucs/arch/bitops.h>
 #include <ucs/profile/profile.h>
+#include <unistd.h>
 
 typedef struct {
     struct mlx5dv_devx_obj     *atomic_dvmr;
@@ -47,6 +48,9 @@ static ucs_status_t uct_ib_mlx5_reg_key(uct_ib_md_t *md, void *address,
     if (status != UCS_OK) {
         return status;
     }
+
+    /* Workaround */
+    usleep(md->config.reg_delay);
 
     uct_ib_memh_init_from_mr(&memh->super, memh->mr);
 

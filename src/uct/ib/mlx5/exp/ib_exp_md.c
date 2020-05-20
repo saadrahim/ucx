@@ -40,6 +40,9 @@ static ucs_status_t uct_ib_mlx5_reg_key(uct_ib_md_t *md, void *address,
         return status;
     }
 
+    /* Workaround */
+    usleep(md->config.reg_delay);
+
     uct_ib_memh_init_from_mr(&memh->super, memh->mr);
     return UCS_OK;
 }

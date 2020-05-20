@@ -26,7 +26,7 @@
 #endif
 #include <sys/resource.h>
 #include <float.h>
-
+#include <unistd.h>
 
 #define UCT_IB_MD_RCACHE_DEFAULT_ALIGN 16
 
@@ -135,6 +135,10 @@ static ucs_config_field_t uct_ib_md_config_table[] = {
     {"INDIRECT_ATOMIC", "y",
      "Use indirect atomic\n",
      ucs_offsetof(uct_ib_md_config_t, ext.enable_indirect_atomic), UCS_CONFIG_TYPE_BOOL},
+
+    {"REG_DELAY", "1000",
+     "Introduce additional delay after calling ibv_reg_mr.\n",
+     ucs_offsetof(uct_ib_md_config_t, ext.reg_delay), UCS_CONFIG_TYPE_UINT},
 
     {"GID_INDEX", "auto",
      "Port GID index to use.",
@@ -772,6 +776,10 @@ static ucs_status_t uct_ib_verbs_reg_key(uct_ib_md_t *md, void *address,
     if (status != UCS_OK) {
         return status;
     }
+
+    /* Workaround */
+    ucs_warn("reg_delay %u", md->config.reg_delay);
+    usleep(md->config.reg_delay);
 
     uct_ib_memh_init_from_mr(&memh->super, memh->mr);
     return UCS_OK;

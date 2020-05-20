@@ -78,6 +78,7 @@ typedef struct uct_ib_md_ext_config {
 
     size_t                   gid_index;    /**< IB GID index to use  */
 
+    unsigned                 reg_delay;    /**< Extra delay after memory registration */
     size_t                   min_mt_reg;   /**< Multi-threaded registration threshold */
     size_t                   mt_reg_chunk; /**< Multi-threaded registration chunk */
     int                      mt_reg_bind;  /**< Multi-threaded registration bind to core */
