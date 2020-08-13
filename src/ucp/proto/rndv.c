@@ -1097,7 +1097,15 @@ UCS_PROFILE_FUNC_VOID(ucp_rndv_receive, (worker, rreq, rndv_rts_hdr),
             goto out;
         } else if (rndv_mode == UCP_RNDV_MODE_AUTO) {
             /* check if we need pipelined memtype staging */
-            if (UCP_MEM_IS_CUDA(rreq->recv.mem_type) &&
+            ucs_trace("mem_type: %d, gpu: %d, recv pipeline: %d, put pipeline: %d",
+                    rreq->recv.mem_type, UCP_MEM_IS_GPU(rreq->recv.mem_type), 
+                    ucp_rndv_is_recv_pipeline_needed(rndv_req, rndv_rts_hdr, rreq->recv.mem_type),
+                    ucp_rndv_is_put_pipeline_needed(rndv_rts_hdr->address,
+                                                     rndv_rts_hdr->size,
+                                                     ep_config->rndv.min_get_zcopy,
+                                                     ep_config->rndv.max_get_zcopy)
+                    );
+            if (UCP_MEM_IS_GPU(rreq->recv.mem_type) &&
                 ucp_rndv_is_recv_pipeline_needed(rndv_req,
                                                  rndv_rts_hdr,
                                                  rreq->recv.mem_type)) {

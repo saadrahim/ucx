@@ -70,8 +70,7 @@ static UCS_F_ALWAYS_INLINE int ucp_rndv_is_get_zcopy(ucs_memory_type_t mem_type,
 {
     return ((rndv_mode == UCP_RNDV_MODE_GET_ZCOPY) ||
             ((rndv_mode == UCP_RNDV_MODE_AUTO) &&
-             (UCP_MEM_IS_ACCESSIBLE_FROM_CPU(mem_type) ||
-              UCP_MEM_IS_ROCM(mem_type))));
+             (UCP_MEM_IS_ACCESSIBLE_FROM_CPU(mem_type))));
 }
 
 #endif

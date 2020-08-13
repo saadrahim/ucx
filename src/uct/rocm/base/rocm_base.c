@@ -157,6 +157,8 @@ hsa_status_t uct_rocm_base_get_ptr_info(void *ptr, size_t size,
         return status;
     }
 
+    ucs_trace("ptr: %p, size: %zu, type: %d, base: %p, base size: %zu",
+            ptr, size, info.type, info.agentBaseAddress, info.sizeInBytes);
     if (info.type != HSA_EXT_POINTER_TYPE_HSA)
         return HSA_STATUS_ERROR;
 
