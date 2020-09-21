@@ -25,7 +25,7 @@ ucp_rndv_is_get_zcopy(ucp_request_t *req, ucp_context_h context)
 {
     return ((context->config.ext.rndv_mode == UCP_RNDV_MODE_GET_ZCOPY) ||
             ((context->config.ext.rndv_mode == UCP_RNDV_MODE_AUTO) &&
-             (!UCP_MEM_IS_CUDA(req->send.mem_type) ||
+             (!UCP_MEM_IS_GPU(req->send.mem_type) ||
               (req->send.length < context->config.ext.rndv_pipeline_send_thresh))));
 }
 
@@ -825,6 +825,44 @@ ucp_rndv_recv_frag_put_mem_type(ucp_request_t *rreq, ucp_request_t *rndv_req,
 }
 
 static void
+ucp_rndv_send_frag_update_get_rkey(ucp_worker_h worker, ucp_request_t *freq,
+                                   ucp_mem_desc_t *mdesc,
+                                   ucs_memory_type_t mem_type)
+{
+    ucs_status_t status;
+    ucp_ep_h mem_type_ep;
+    ucp_md_index_t md_index;
+    uct_md_attr_t *md_attr;
+    ucp_lane_index_t mem_type_rma_lane;
+    void *rkey_buffer;
+    size_t rkey_size;
+
+    ucp_rkey_h *rkey_p  = &freq->send.rndv_get.rkey;
+    uint8_t *rkey_index = freq->send.rndv_get.rkey_index;
+
+    mem_type_ep       = worker->mem_type_ep[mem_type];
+    mem_type_rma_lane = ucp_ep_config(mem_type_ep)->key.rma_bw_lanes[0];
+    ucs_assert(mem_type_rma_lane != UCP_NULL_LANE);
+
+    md_index = ucp_ep_md_index(mem_type_ep, mem_type_rma_lane);
+    md_attr  = &mem_type_ep->worker->context->tl_mds[md_index].attr;
+
+    if (!(md_attr->cap.flags & UCT_MD_FLAG_NEED_RKEY)) {
+        return;
+    }
+
+    status = ucp_rkey_pack(mem_type_ep->worker->context, mdesc->memh,
+                           &rkey_buffer, &rkey_size);
+    ucs_assert_always(status == UCS_OK);
+
+    status = ucp_ep_rkey_unpack(mem_type_ep, rkey_buffer, rkey_p);
+    ucs_assert_always(status == UCS_OK);
+    ucp_rkey_buffer_release(rkey_buffer);
+
+    memset(rkey_index, 0, UCP_MAX_LANES * sizeof(uint8_t));
+}
+
+static void
 ucp_rndv_send_frag_get_mem_type(ucp_request_t *sreq, ucs_ptr_map_key_t rreq_id,
                                 size_t length, uint64_t remote_address,
                                 ucs_memory_type_t remote_mem_type, ucp_rkey_h rkey,
@@ -865,6 +903,10 @@ ucp_rndv_send_frag_get_mem_type(ucp_request_t *sreq, ucs_ptr_map_key_t rreq_id,
     for (i = 0; i < UCP_MAX_LANES; i++) {
         freq->send.rndv_get.rkey_index[i] = rkey_index ? rkey_index[i]
                                                        : UCP_NULL_RESOURCE;
+    }
+
+    if (UCP_MEM_IS_GPU(remote_mem_type)) {
+        ucp_rndv_send_frag_update_get_rkey(worker, freq, mdesc, remote_mem_type);
     }
 
     freq->status = UCS_INPROGRESS;
@@ -1237,7 +1279,7 @@ UCS_PROFILE_FUNC_VOID(ucp_rndv_receive, (worker, rreq, rndv_rts_hdr, rkey_buf),
 
         if (rndv_mode == UCP_RNDV_MODE_AUTO) {
             /* check if we need pipelined memtype staging */
-            if (UCP_MEM_IS_CUDA(rreq->recv.mem_type) &&
+            if (UCP_MEM_IS_GPU(rreq->recv.mem_type) &&
                 ucp_rndv_is_recv_pipeline_needed(rndv_req, rndv_rts_hdr,
                                                  rkey_buf, rreq->recv.mem_type,
                                                  is_get_zcopy_failed)) {
@@ -1262,7 +1304,7 @@ UCS_PROFILE_FUNC_VOID(ucp_rndv_receive, (worker, rreq, rndv_rts_hdr, rkey_buf),
         }
 
         if ((rndv_mode == UCP_RNDV_MODE_PUT_ZCOPY) ||
-            UCP_MEM_IS_CUDA(rreq->recv.mem_type)) {
+            UCP_MEM_IS_GPU(rreq->recv.mem_type)) {
             /* put protocol is allowed - register receive buffer memory for rma */
             ucs_assert(rndv_rts_hdr->size <= rreq->recv.length);
             ucp_request_recv_buffer_reg(rreq, ep_config->key.rma_bw_md_map,
@@ -1498,6 +1540,11 @@ UCS_PROFILE_FUNC_VOID(ucp_rndv_put_pipeline_frag_get_completion, (self),
     ucp_request_t *freq  = ucs_container_of(self, ucp_request_t,
                                             send.state.uct_comp);
     ucp_request_t *fsreq = freq->super_req;
+
+    /* get rkey can be NULL if memtype ep doesn't need RKEY */
+    if (freq->send.rndv_get.rkey != NULL) {
+        ucp_rkey_destroy(freq->send.rndv_get.rkey);
+    }
 
     /* get completed on memtype endpoint to stage on host. send put request to receiver*/
     ucp_request_send_state_reset(freq, ucp_rndv_send_frag_put_completion,
